@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.seat.reserve.mapper.BookingMapper">
+
+    <select id="findFirstConflict" resultType="com.seat.reserve.domain.SeatBooking">
+        SELECT id, seat_id, room_id, user_id, book_date, start_time, end_time, status
+        FROM seat_booking
+        WHERE seat_id = #{seatId}
+        AND book_date = #{bookDate}
+        AND status IN ('BOOKED', 'CHECKED_IN', 'LEAVING')
+        <!-- 重叠判据：严格不等，保证 18:00 结束与 18:00 开始可以无缝衔接 -->
+        AND start_time &lt; #{endTime}
+        AND end_time &gt; #{startTime}
+        ORDER BY start_time
+        LIMIT 1
+    </select>
+
+    <select id="countActiveByUserAndDate" resultType="int">
+        SELECT COUNT(*)
+        FROM seat_booking
+        WHERE user_id = #{userId}
+        AND book_date = #{bookDate}
+        AND status IN ('BOOKED', 'CHECKED_IN', 'LEAVING')
+    </select>
+
+    <select id="listActiveByUserAndDate" resultType="com.seat.reserve.domain.SeatBooking">
+        SELECT id, seat_id, room_id, user_id, book_date, start_time, end_time,
+        status, checkin_at, leave_at, version, remark, created_at, updated_at
+        FROM seat_booking
+        WHERE user_id = #{userId}
+        AND book_date = #{bookDate}
+        AND status IN ('BOOKED', 'CHECKED_IN', 'LEAVING')
+        ORDER BY start_time
+    </select>
+
+    <select id="findById" resultType="com.seat.reserve.domain.SeatBooking">
+        SELECT id, seat_id, room_id, user_id, book_date, start_time, end_time,
+        status, checkin_at, leave_at, version, remark, created_at, updated_at
+        FROM seat_booking
+        WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.seat.reserve.domain.SeatBooking"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO seat_booking
+        (seat_id, room_id, user_id, book_date, start_time, end_time, status, version, remark)
+        VALUES
+        (#{seatId}, #{roomId}, #{userId}, #{bookDate}, #{startTime}, #{endTime},
+        #{status}, 1, #{remark})
+    </insert>
+
+    <update id="cancel">
+        UPDATE seat_booking
+        SET status = 'CANCELLED'
+        WHERE id = #{id}
+        AND user_id = #{userId}
+        AND status = 'BOOKED'
+    </update>
+
+    <select id="countUserOverlap" resultType="int">
+        SELECT COUNT(*)
+        FROM seat_booking
+        WHERE user_id = #{userId}
+        AND book_date = #{bookDate}
+        AND status IN ('BOOKED', 'CHECKED_IN', 'LEAVING')
+        AND start_time &lt; #{endTime}
+        AND end_time &gt; #{startTime}
+    </select>
+
+    <update id="markCheckin">
+        UPDATE seat_booking
+        SET status = 'CHECKED_IN', checkin_at = NOW(), version = version + 1
+        WHERE id = #{id} AND status = 'BOOKED'
+    </update>
+
+    <update id="markLeave">
+        UPDATE seat_booking
+        SET status = 'LEAVING', leave_at = NOW(), version = version + 1
+        WHERE id = #{id} AND status = 'CHECKED_IN'
+    </update>
+
+    <update id="markBack">
+        UPDATE seat_booking
+        SET status = 'CHECKED_IN', version = version + 1
+        WHERE id = #{id} AND status = 'LEAVING'
+    </update>
+
+    <update id="markExpiredFromBooked">
+        UPDATE seat_booking
+        SET status = 'EXPIRED', version = version + 1
+        WHERE id = #{id} AND status = 'BOOKED'
+    </update>
+
+    <update id="markExpiredFromLeaving">
+        UPDATE seat_booking
+        SET status = 'EXPIRED', version = version + 1
+        WHERE id = #{id} AND status = 'LEAVING'
+    </update>
+
+    <update id="markFinished">
+        UPDATE seat_booking
+        SET status = 'FINISHED', version = version + 1
+        WHERE id = #{id} AND status IN ('CHECKED_IN', 'LEAVING')
+    </update>
+</mapper>

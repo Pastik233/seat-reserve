@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.seat.reserve.mapper.SeatMapper">
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM lib_seat
+    </select>
+
+    <select id="listByRoom" resultType="com.seat.reserve.domain.LibSeat">
+        SELECT id, room_id, seat_no, zone, has_power, status
+        FROM lib_seat
+        WHERE room_id = #{roomId}
+        ORDER BY seat_no
+    </select>
+
+    <select id="countAvailableByRoom" resultType="int">
+        SELECT COUNT(*) FROM lib_seat WHERE room_id = #{roomId} AND status = 1
+    </select>
+
+    <select id="findById" resultType="com.seat.reserve.domain.LibSeat">
+        SELECT id, room_id, seat_no, zone, has_power, status
+        FROM lib_seat
+        WHERE id = #{id}
+    </select>
+
+    <!-- 核心 SQL：排除掉"该时段已有有效预约"的座位 -->
+    <select id="listFreeByRoom" resultType="com.seat.reserve.domain.LibSeat">
+        SELECT s.id, s.room_id, s.seat_no, s.zone, s.has_power, s.status
+        FROM lib_seat s
+        WHERE s.room_id = #{roomId}
+        AND s.status = 1
+        AND NOT EXISTS (
+        SELECT 1
+        FROM seat_booking b
+        WHERE b.seat_id = s.id
+        AND b.book_date = #{bookDate}
+        AND b.status IN ('BOOKED', 'CHECKED_IN', 'LEAVING')
+        AND b.start_time &lt; #{endTime}
+        AND b.end_time &gt; #{startTime}
+        )
+        ORDER BY s.seat_no
+    </select>
+
+    <select id="lockForUpdate" resultType="java.lang.Long">
+        SELECT id FROM lib_seat WHERE id = #{id} FOR UPDATE
+    </select>
+</mapper>

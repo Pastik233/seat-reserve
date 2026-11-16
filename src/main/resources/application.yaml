@@ -1,0 +1,47 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: seat-reserve
+
+  # 本地开发用的密钥覆盖文件，放在项目根目录，已被 .gitignore 忽略，也不会打进 jar。
+  # 文件不存在时 optional 不报错，但下面的 ${...} 会因解析不到而明确终止启动，
+  # 保证任何环境都不会带着一个写死在仓库里的弱密钥跑起来。
+  # 部署/CI 请直接注入 DB_PASSWORD、JWT_SECRET 环境变量，不要带这个文件。
+  config:
+    import: optional:file:./secrets.local.yaml
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/seat_reserve?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: ${DB_PASSWORD}
+
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      database: 0
+      timeout: 3s
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    encoding: UTF-8
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.seat.reserve.domain
+  configuration:
+    map-underscore-to-camel-case: true
+
+logging:
+  level:
+    com.seat.reserve: debug
+
+app:
+  jwt:
+    # HS256 要求密钥至少 256 位 = 32 字节，短了 jjwt 直接抛 WeakKeyException
+    secret: ${JWT_SECRET}
+    expire-minutes: 120

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.seat.reserve.mapper.UserMapper">
+
+    <sql id="cols">
+        id, username, password, nickname, student_no, role_code,
+        status, violation_count, blacklist_until, created_at, updated_at
+    </sql>
+
+    <select id="findByUsername" resultType="com.seat.reserve.domain.SysUser">
+        SELECT <include refid="cols"/> FROM sys_user WHERE username = #{username}
+    </select>
+
+    <select id="findById" resultType="com.seat.reserve.domain.SysUser">
+        SELECT <include refid="cols"/> FROM sys_user WHERE id = #{id}
+    </select>
+
+    <update id="increaseViolationCount">
+        UPDATE sys_user SET violation_count = violation_count + 1 WHERE id = #{userId}
+    </update>
+
+    <select id="findViolationCount" resultType="java.lang.Integer">
+        SELECT violation_count FROM sys_user WHERE id = #{userId}
+    </select>
+
+    <update id="blacklist">
+        UPDATE sys_user
+        SET blacklist_until = #{until}, violation_count = 0
+        WHERE id = #{userId}
+    </update>
+</mapper>

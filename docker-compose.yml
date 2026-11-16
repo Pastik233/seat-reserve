@@ -1,0 +1,37 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: seat-mysql
+    restart: unless-stopped
+    environment:
+      # 从 .env 读取；未配置时直接报错，不用内置默认密码
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?copy .env.example to .env and set MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: seat_reserve
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - seat-mysql-data:/var/lib/mysql
+    healthcheck:
+      # $$ 是 compose 转义，容器内 shell 展开成容器已有的 MYSQL_ROOT_PASSWORD 环境变量
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7.4
+    container_name: seat-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - seat-redis-data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+
+volumes:
+  seat-mysql-data:
+  seat-redis-data:

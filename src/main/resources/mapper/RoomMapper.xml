@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.seat.reserve.mapper.RoomMapper">
+
+    <sql id="cols">
+        id, name, floor, open_time, close_time, status, created_at
+    </sql>
+
+    <select id="findAllOpen" resultType="com.seat.reserve.domain.LibRoom">
+        SELECT <include refid="cols"/>
+        FROM lib_room
+        WHERE status = 1
+        ORDER BY id
+    </select>
+
+    <select id="findById" resultType="com.seat.reserve.domain.LibRoom">
+        SELECT <include refid="cols"/> FROM lib_room WHERE id = #{id}
+    </select>
+
+</mapper>
