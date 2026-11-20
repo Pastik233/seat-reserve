@@ -31,7 +31,7 @@ public class SecurityConfig {
             // 前端静态资源（jar 内置）
             "/", "/index.html", "/assets/**", "/favicon.ico", "/vite.svg",
             // 前端路由本身也要放行，否则刷新 /seats 会被拦成 401（鉴权由前端的路由守卫做）
-            "/login", "/seats", "/my"
+            "/login", "/seats", "/my", "/admin", "/admin/seats","/admin/bookings"
     };
 
     @Bean

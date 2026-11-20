@@ -31,4 +31,21 @@ public interface SeatMapper {
      * 事务提交前，别的请求执行到这里会一直阻塞 —— 这就是"串行化"的物理保证。
      */
     Long lockForUpdate(@Param("id") Long id);
+
+    // ============ 管理端：座位增删改 ============
+
+    /** 新增座位，回填自增主键 */
+    int insert(LibSeat seat);
+
+    /** 修改座位的可变属性（seat_no / zone / has_power / status），不含 room_id */
+    int update(LibSeat seat);
+
+    /** 物理删除座位 */
+    int deleteById(@Param("id") Long id);
+
+    /** 该座位是否有关联预约（任意状态）——删除前的一致性校验 */
+    int countBookingsBySeat(@Param("seatId") Long seatId);
+
+    /** 该座位当前是否有进行中的预约（BOOKED/CHECKED_IN/LEAVING）——置维修前的校验 */
+    int countActiveBookingsBySeat(@Param("seatId") Long seatId);
 }

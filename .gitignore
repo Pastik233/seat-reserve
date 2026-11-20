@@ -45,3 +45,9 @@ application-local.yaml
 
 # 本地工作记录（含 IDE / 环境信息，不对外公开）
 .workbuddy/
+
+# 个人求职材料（含简历、联系方式，不对外公开）
+resume-work/
+
+# 前端框架迁移时的旧代码备份（React → Vue），本地保留，不上传
+web/src-react-backup/

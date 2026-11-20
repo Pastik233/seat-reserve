@@ -1,6 +1,7 @@
 package com.seat.reserve.mapper;
 
 import com.seat.reserve.domain.SeatBooking;
+import com.seat.reserve.web.dto.AdminBookingView;
 import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDate;
@@ -61,4 +62,7 @@ public interface BookingMapper {
 
     /** 系统：结束 */
     int markFinished(@Param("id") Long id);
+
+    List<AdminBookingView> listAllByDate(@Param("date") LocalDate date,
+                                         @Param("status") String status);
 }

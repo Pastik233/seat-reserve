@@ -45,4 +45,31 @@
     <select id="lockForUpdate" resultType="java.lang.Long">
         SELECT id FROM lib_seat WHERE id = #{id} FOR UPDATE
     </select>
+
+    <insert id="insert" parameterType="com.seat.reserve.domain.LibSeat"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO lib_seat (room_id, seat_no, zone, has_power, status)
+        VALUES (#{roomId}, #{seatNo}, #{zone}, #{hasPower}, #{status})
+    </insert>
+
+    <!-- 只允许改可变属性，room_id / seat_no 不可变，避免打乱已有预约的归属 -->
+    <update id="update" parameterType="com.seat.reserve.domain.LibSeat">
+        UPDATE lib_seat
+        SET zone = #{zone}, has_power = #{hasPower}, status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM lib_seat WHERE id = #{id}
+    </delete>
+
+    <select id="countBookingsBySeat" resultType="int">
+        SELECT COUNT(*) FROM seat_booking WHERE seat_id = #{seatId}
+    </select>
+
+    <select id="countActiveBookingsBySeat" resultType="int">
+        SELECT COUNT(*) FROM seat_booking
+        WHERE seat_id = #{seatId}
+        AND status IN ('BOOKED', 'CHECKED_IN', 'LEAVING')
+    </select>
 </mapper>

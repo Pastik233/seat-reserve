@@ -1,8 +1,8 @@
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [vue()],
   server: {
     port: 5173,
     proxy: {
@@ -12,7 +12,7 @@ export default defineConfig({
       },
     },
   },
-  // ↓↓↓ 新增：打包产物不再放 web/dist，直接写进 Spring Boot 的静态资源目录
+  // 打包产物直接写进 Spring Boot 的静态资源目录
   build: {
     outDir: '../src/main/resources/static',
     emptyOutDir: true,

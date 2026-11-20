@@ -103,4 +103,21 @@
         SET status = 'FINISHED', version = version + 1
         WHERE id = #{id} AND status IN ('CHECKED_IN', 'LEAVING')
     </update>
+
+    <select id="listAllByDate" resultType="com.seat.reserve.web.dto.AdminBookingView">
+        SELECT b.id, b.seat_id AS seatId, s.seat_no AS seatNo,
+        b.room_id AS roomId, r.name AS roomName,
+        b.user_id AS userId, u.username, u.nickname,
+        b.book_date AS bookDate, b.start_time AS startTime, b.end_time AS endTime,
+        b.status, b.created_at AS createdAt
+        FROM seat_booking b
+        LEFT JOIN lib_seat s ON s.id = b.seat_id
+        LEFT JOIN lib_room r ON r.id = b.room_id
+        LEFT JOIN sys_user u ON u.id = b.user_id
+        WHERE b.book_date = #{date}
+        <if test="status != null and status != ''">
+            AND b.status = #{status}
+        </if>
+        ORDER BY b.start_time, b.seat_id
+    </select>
 </mapper>
