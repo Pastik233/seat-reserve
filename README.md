@@ -1,19 +1,20 @@
-# 图书馆座位预约系统 · seat-reserve
+# 研习空间预约与履约平台 · seat-reserve
 
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.4-6DB33F?style=flat-square&logo=springboot&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-8.4-4479A1?style=flat-square&logo=mysql&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-7.4-DC382D?style=flat-square&logo=redis&logoColor=white)
-![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)
+![Vue](https://img.shields.io/badge/Vue-3-4FC08D?style=flat-square&logo=vuedotjs&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
 
-面向高校图书馆的座位预约系统：选座、签到、暂离、结束、违约拉黑全流程闭环。
-后端 Spring Boot 3 + MyBatis + MySQL + Redis，前端 React 19 + Ant Design 6，前后端一起打成**单个可执行 jar** 运行。
+面向高校自习场景的**预约—履约闭环系统**：选座、签到、暂离、到期完成、超时违约、信用拉黑全流程，用户侧 + 管理员侧双角色。
+后端 Spring Boot 3 + MyBatis + MySQL + Redis，前端 Vue 3 + Element Plus + Pinia，前后端一起打成**单个可执行 jar** 运行。
 
-项目重心不在 CRUD，而在两件容易被忽略的事：
+项目重心不在 CRUD，而在三件容易被忽略的事：
 
 - **并发下不会重复预约**——三层防重：Redis 分布式锁挡流量 → 数据库行锁保互斥 → 时间区间判据定语义。
 - **预约状态全自动流转**——Redis ZSet 延迟队列驱动，不用引入 MQ 也能做超时失效、到期完成、暂离超时。
+- **从工具到平台**——运营看板（履约率 / 使用率 / 违约排行）+ 管理后台（座位上下架、预约强制取消、违约拉黑），形成完整业务闭环。
 
 ---
 
@@ -50,9 +51,11 @@
              └─ 暂离超时   → 失效 + OVERTIME 违约 ─┴→ 累计 3 次 → 拉黑 7 天
 ```
 
-并发写入用三层机制兜住，状态推进交给延迟队列自动完成，用户只需要做「签到 / 暂离 / 返回 / 取消」四个动作。
+并发写入用三层机制兜住，状态推进交给延迟队列自动完成，用户只需要做「签到 / 暂离 / 返回 / 取消」四个动作。管理员侧另有运营看板与后台管理入口。
 
 ## 功能特性
+
+### 用户侧
 
 | 模块 | 能力 |
 | --- | --- |
@@ -68,9 +71,21 @@
 | 违约管理 | 累计 3 次违约自动拉黑 7 天，期间禁止预约 |
 | 审计 | 每次状态流转写入 `booking_log`（含系统自动流转），可追溯 |
 
+### 管理员侧
+
+| 模块 | 能力 |
+| --- | --- |
+| 运营看板 | 预约总量、履约完成、违约作废、**履约率**（分母排除用户主动取消）、累计预约小时数 |
+| 排行统计 | 座位使用排行、违约用户排行、时段热力；按日期区间筛选，服务层限制单次最多 92 天 |
+| 座位管理 | 座位增删改 / 置维修；写操作后主动失效 Redis 座位缓存，避免用户看到已下架座位 |
+| 预约管理 | 按日期 / 状态查全部预约（JOIN 出预约人、座位号、阅览室），强制取消复用用户取消的同一套逻辑 |
+| 一致性校验 | 有进行中预约的座位不允许置维修；有历史预约的座位不允许物理删除 |
+
+> 管理端接口统一用 `@PreAuthorize("hasRole('ADMIN')")` 做方法级鉴权，前端隐藏菜单只是体验，权限边界在后端。
+
 ## 界面预览
 
-> 以下截图来自项目实际运行的前端页面，数据为演示数据（一楼自习室 12 个座位，其中 3 个已被预约）。
+> 以下截图来自项目早期版本，界面为演示数据（一楼自习室 12 个座位）。当前前端已迁移至 Vue 3 + Element Plus，交互与布局一致但视觉有更新。
 
 **座位预约**：选阅览室 → 选日期 → 选时段，空闲座位一次列全；点座位高亮，提交后直接跳到「我的预约」。
 
@@ -92,10 +107,10 @@
 | --- | --- | --- |
 | Java | 21 | 语言运行时 |
 | Spring Boot | 3.5.4 | 应用框架 |
-| Spring Security | 6.x | 认证过滤链、方法级鉴权 |
+| Spring Security | 6.x | 认证过滤链、方法级鉴权（`@PreAuthorize`） |
 | MyBatis | 3.0.4（starter） | 持久层，手写 SQL 与 XML 映射 |
 | MySQL | 8.4 | 业务数据存储，InnoDB |
-| Redis | 7.4 | 分布式锁、用户快照缓存、延迟队列 |
+| Redis | 7.4 | 分布式锁、用户快照缓存、座位缓存、延迟队列 |
 | Flyway | 随 Boot 版本 | 建表与种子数据版本化 |
 | JJWT | 0.12.6 | JWT 签发与校验（HS256） |
 | Lombok | 随 Boot 版本 | 日志与样板代码 |
@@ -106,11 +121,11 @@
 
 | 技术 | 版本 | 用途 |
 | --- | --- | --- |
-| React | 19 | UI 框架 |
+| Vue | 3.5 | UI 框架（Composition API + `<script setup>`） |
 | Vite | 8 | 开发服务器与构建 |
-| Ant Design | 6 | 组件库（表格、日期选择、消息提示） |
-| Zustand | 5 | 登录态存储（token 持久化） |
-| React Router | 7 | 路由与登录守卫 |
+| Element Plus | 2.11 | 组件库（表格、表单、日期选择、消息提示） |
+| Pinia | 3 | 登录态存储（token / user 持久化） |
+| Vue Router | 4 | 路由、登录守卫与管理员角色守卫，路由懒加载 |
 | Axios | 1.x | 请求封装、统一错误提示、401 拦截 |
 | dayjs | 1.11 | 时间格式化与时段计算 |
 
@@ -119,20 +134,20 @@
 ```mermaid
 flowchart LR
     subgraph Browser["浏览器"]
-        UI["React 19 + Ant Design 6<br/>Vite 构建，产物内置到 jar"]
+        UI["Vue 3 + Element Plus<br/>Vite 构建，路由懒加载，产物内置到 jar"]
     end
 
     subgraph App["Spring Boot 3.5 / Java 21"]
-        SEC["Spring Security<br/>JWT 认证过滤器"]
+        SEC["Spring Security<br/>JWT 过滤器 + 方法级鉴权"]
         WEB["Controller 层<br/>参数校验 + 统一响应"]
-        SVC["Service 层<br/>事务 / 状态机 / 三层防重"]
+        SVC["Service 层<br/>事务 / 状态机 / 三层防重 / 报表聚合"]
         JOB["DelayScheduler<br/>每 30 秒扫描"]
         SEC --> WEB --> SVC
     end
 
     subgraph Infra["中间件"]
-        MYSQL[("MySQL 8.4<br/>6 张业务表")]
-        REDIS[("Redis 7.4<br/>分布式锁 / 用户快照 / 延迟队列")]
+        MYSQL[("MySQL 8.4<br/>7 张表")]
+        REDIS[("Redis 7.4<br/>分布式锁 / 用户快照 / 座位缓存 / 延迟队列")]
     end
 
     UI -->|"HTTP + Bearer Token"| SEC
@@ -142,7 +157,7 @@ flowchart LR
     JOB --> MYSQL
 ```
 
-前后端分离开发、合并部署：开发时 Vite 把 `/api` 代理到 8080；构建时 `outDir` 直接指向 `src/main/resources/static`，`SpaForwardController` 负责把前端路由 forward 回 `index.html`，刷新 `/seats` 不会 404。
+前后端分离开发、合并部署：开发时 Vite 把 `/api` 代理到 8080；构建时 `outDir` 直接指向 `src/main/resources/static`，`SpaForwardController` 负责把前端路由 forward 回 `index.html`，刷新 `/admin/seats` 等深层路由不会 404。
 
 ## 核心设计
 
@@ -195,7 +210,7 @@ sequenceDiagram
 stateDiagram-v2
     [*] --> BOOKED: 创建预约
     BOOKED --> CHECKED_IN: 签到（开始后 15 分钟内）
-    BOOKED --> CANCELLED: 用户取消
+    BOOKED --> CANCELLED: 用户取消 / 管理员强制取消
     BOOKED --> EXPIRED: 超时未签到（记 NO_SHOW）
     CHECKED_IN --> LEAVING: 暂离
     LEAVING --> CHECKED_IN: 返回
@@ -215,6 +230,8 @@ WHERE id = ? AND status = 'BOOKED';
 ```
 
 这样用户点「签到」和延迟队列判「超时」同时到达时，只有一方能成功，另一方拿到 0 行后放弃——不需要额外的锁，也不会出现 `EXPIRED` 又被改回 `CHECKED_IN`。
+
+管理员强制取消复用同一个 `BookingService.cancel`：CAS 语义、写入 `booking_log`（`operator_id` 记录管理员）、事务提交后摘延迟任务，与用户自助取消完全一致。
 
 ### 3. 延迟队列：不引入 MQ 也能做定时流转
 
@@ -243,6 +260,15 @@ WHERE id = ? AND status = 'BOOKED';
 
 JWT 只携带用户 id，角色、黑名单等易变信息放在 Redis 快照里（`UserSnapshotStore`）。
 纯 JWT 无法即时吊销，纯 Session 又要引入共享存储；这里用「token 无状态 + 快照可清除」拿到两者的折中：校验仍然是无状态的一次查询，权限变更却能立刻生效。
+
+管理端接口在类上加 `@PreAuthorize("hasRole('ADMIN')")`：因为过滤器把 authority 拼成 `ROLE_` + roleCode，所以用 `hasRole` 而非 `hasAuthority`（后者不会补前缀）。
+
+### 6. 报表与管理后台
+
+- **报表不新建事实表**：直接聚合 `seat_booking` / `booking_log` / `violation`，复用 V3 加的 `(book_date, status)` 索引支撑按日期区间的筛选。
+- **履约率口径**：`FINISHED / (FINISHED + EXPIRED)`，分母刻意排除 `CANCELLED`——用户主动取消不代表平台失约。
+- **缓存一致性**：座位是缓存读（`cache:seat:room:{roomId}`，10 分钟），管理端任何写操作后主动 `evictRoomCache`，避免用户看到已下架的座位。
+- **引用完整性**：有进行中预约的座位不允许置维修；有历史预约的座位不允许物理删除，只能停用。
 
 ## 快速开始
 
@@ -297,14 +323,17 @@ JWT_SECRET: 用 openssl rand -hex 32 生成的 64 位十六进制串
 cd web
 npm install
 npm run dev      # http://localhost:5173，/api 自动代理到 8080
+npm run lint     # eslint 校验（vue 插件）
 npm run build    # 产物直接写入 src/main/resources/static，随后 jar 即可直接提供页面
 ```
+
+> 注意：改了 `web/` 下的源码必须重新 `npm run build` 才会生效——前端是构建进静态资源随 jar 发布的，运行中的实例读的是构建时的版本。
 
 ### 演示账号
 
 | 账号 | 密码 | 角色 |
 | --- | --- | --- |
-| `admin` | `123456` | ADMIN |
+| `admin` | `123456` | ADMIN（可看运营看板与后台管理） |
 | `zhangsan` | `123456` | USER |
 
 > 种子数据里的密码是 `{noop}` 明文编码，**只为演示方便**。生产环境应改为 `{bcrypt}` 并移除种子账号。
@@ -320,7 +349,9 @@ java -jar target/seat-reserve-0.0.1-SNAPSHOT.jar
 
 ## 接口一览
 
-统一响应体 `{ "code": 0, "msg": "ok", "data": ... }`；除登录与健康检查外都需要 `Authorization: Bearer <token>`。
+统一响应体 `{ "code": 0, "msg": "ok", "data": ... }`；除登录与健康检查外都需要 `Authorization: Bearer <token>`。管理端接口还需要 ADMIN 角色。
+
+### 用户接口
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
@@ -338,6 +369,21 @@ java -jar target/seat-reserve-0.0.1-SNAPSHOT.jar
 | `POST` | `/api/bookings/{id}/back` | 返回座位 |
 | `GET` | `/api/ping` | 健康检查（座位总数 + 数据库连通性） |
 
+### 管理端接口（需 ADMIN）
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/api/admin/overview` | 核心指标，`?from=&to=` |
+| `GET` | `/api/admin/seats/rank` | 座位使用排行 |
+| `GET` | `/api/admin/violations/rank` | 违约排行 |
+| `GET` | `/api/admin/heat` | 时段热力 |
+| `GET` | `/api/admin/seats` | 某阅览室全部座位，`?roomId=` |
+| `POST` | `/api/admin/seats` | 新增座位 |
+| `PUT` | `/api/admin/seats/{id}` | 修改座位（含置维修 / 恢复） |
+| `DELETE` | `/api/admin/seats/{id}` | 删除座位（仅允许无预约记录） |
+| `GET` | `/api/admin/bookings` | 全部预约，`?date=&status=`（status 可选） |
+| `DELETE` | `/api/admin/bookings/{id}` | 强制取消预约（复用用户取消逻辑） |
+
 状态码约定：`400` 参数或规则不满足、`401` 未认证 / token 失效、`403` 越权或被拉黑、`404` 资源不存在、`409` 冲突（抢锁失败、时段已占、状态不可流转）。
 
 ## 项目结构
@@ -348,36 +394,40 @@ library
 │   ├── common/          R / BizException / 全局异常处理 / RedisLock / AfterCommit
 │   ├── config/          Spring Security 过滤链与白名单
 │   ├── domain/          实体与状态常量
-│   ├── mapper/          MyBatis 接口
+│   ├── mapper/          MyBatis 接口（含报表与座位管理）
 │   ├── security/        JWT 签发、认证过滤器、用户快照缓存
-│   ├── service/         预约、状态机、时间校验、延迟队列、违约
+│   ├── service/         预约、状态机、时间校验、延迟队列、违约、报表、座位管理
 │   └── web/             Controller 与 DTO，SPA 路由转发
 ├── src/main/resources
-│   ├── db/migration/    V1 建表 / V2 种子数据（Flyway）
+│   ├── db/migration/    V1 建表 / V2 种子数据 / V3 报表索引与发件箱（Flyway）
 │   ├── mapper/          MyBatis XML
 │   ├── static/          前端构建产物（内置进 jar）
 │   └── application.yaml
 ├── src/test/java        预约规则单元测试
-├── web/                 React 前端源码（Vite + Ant Design）
-├── docs/                设计笔记与界面截图
+├── web/                 Vue 3 前端源码（Vite + Element Plus + Pinia）
+│   ├── src/views/       6 个页面组件（登录 / 选座 / 我的预约 / 看板 / 座位管理 / 预约管理）
+│   ├── src/router/      路由与守卫
+│   └── src/stores/      Pinia 登录态
+├── docs/                设计笔记、改造清单与界面截图
 ├── docker-compose.yml   MySQL + Redis
 └── pom.xml
 ```
 
 ## 数据库设计
 
-6 张表，全部 InnoDB / utf8mb4，由 Flyway 版本化管理：
+7 张表（6 张业务表 + 1 张通知发件箱预留），全部 InnoDB / utf8mb4，由 Flyway 版本化管理：
 
 | 表 | 用途 | 关键点 |
 | --- | --- | --- |
-| `sys_user` | 用户 | `violation_count`、`blacklist_until` 支撑违约拉黑 |
+| `sys_user` | 用户 | `violation_count`、`blacklist_until` 支撑违约拉黑；V3 补 `email` 列 |
 | `lib_room` | 阅览室 | 每间有自己的 `open_time` / `close_time` |
 | `lib_seat` | 座位 | `status=0` 表示维修，`uk_room_seat` 保证房间内座位号唯一 |
-| `seat_booking` | 预约主表 | `idx_seat_date (seat_id, book_date, status, start_time)` 支撑冲突检测 |
-| `booking_log` | 状态流转日志 | `operator_id=0` 表示系统自动流转 |
+| `seat_booking` | 预约主表 | `idx_seat_date (seat_id, book_date, status, start_time)` 支撑冲突检测；V3 补 `idx_date_status` 支撑报表 |
+| `booking_log` | 状态流转日志 | `operator_id=0` 表示系统自动流转，否则为操作人（含管理员） |
 | `violation` | 违约记录 | `NO_SHOW` / `OVERTIME` |
+| `notification_task` | 通知发件箱 | V3 预留，**当前未启用通知功能**，表为空 |
 
-索引设计遵循「等值列在前、范围列在后」：冲突查询用得上 `seat_id`、`book_date`、`status`，`start_time` 用作范围条件，`end_time` 回表过滤。
+索引设计遵循「等值列在前、范围列在后」：冲突查询用得上 `seat_id`、`book_date`、`status`，`start_time` 用作范围条件，`end_time` 回表过滤。报表按 `(book_date, status)` 聚合，正好复用 V3 的索引最左列。
 
 ## 测试
 
@@ -406,13 +456,17 @@ CI（`.github/workflows/build.yml`）在每次 push / PR 时执行同样两步�
 4. **没有唯一索引兜底**：时间区间重叠无法用唯一索引表达，除非拆成 30 分钟 slot 子表；所以正确性完全依赖行锁 + 区间判据，这也是三层设计必须讲清楚的原因。
 5. **数据库用 root 连接**：本地演示配置，生产应建独立账号并只授予必要权限。
 6. **Redis 不可用时认证直接失败**：用户快照存在 Redis，Redis 挂掉会让已登录请求一并失败，属于可用性取舍（换来的是权限变更即时生效）。
+7. **管理端不支持强制结束在座预约**：强制取消只作用于 `BOOKED`；结束在座预约涉及记违约与状态机语义，与取消是两回事，刻意不做。
+8. **通知发件箱表预留但未启用**：V3 建了 `notification_task`，但没有投递 worker，功能未启用。
 
 更完整的推导过程见 [docs/并发控制笔记.md](docs/并发控制笔记.md)。
 
 ## 相关文档
 
 - [预约并发控制笔记](docs/并发控制笔记.md)：三层防重的完整推导，含 Redis 锁原子性、行锁与索引、RC/RR 可见性差异。
-- [前端技术栈说明](docs/frontend-stack.md)：前端选型与目录约定。
+- [前端技术栈说明](docs/frontend-stack.md)：Vue 3 选型与目录约定。
+- [改造清单 · 报表与通知](docs/改造清单-报表与通知.md)：运营报表的实施记录；通知模块已决定不做，文档中有说明。
+- [改造清单 · 预约管理](docs/改造清单-预约管理.md)：管理端预约列表与强制取消的实施记录。
 
 ## 许可证
 
